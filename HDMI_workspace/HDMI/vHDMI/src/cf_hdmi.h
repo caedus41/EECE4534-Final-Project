@@ -142,6 +142,7 @@ enum videoResolution
 #define FRAME_BUFFER_0 VIDEO_BASEADDR
 #define FRAME_BUFFER_1 (FRAME_BUFFER_0 + 8294400)
 #define FRAME_BUFFER_2 (FRAME_BUFFER_1 + 8294400)
+#define FRAME_BUFFER_3 (FRAME_BUFFER_2 + 8294400)
 
 
 /******************************************************************************/

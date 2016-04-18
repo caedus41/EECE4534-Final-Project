@@ -124,8 +124,18 @@ extern u32 XDmaPs_ToCCRValue(XDmaPs_ChanCtrl *ChanCtrl);
 unsigned int hTime, vTime;
 
 uint32_t frameBufferSelect(){
-	static uint32_t addr = FRAME_BUFFER_0;
-	return (addr == FRAME_BUFFER_0) ? FRAME_BUFFER_1 : FRAME_BUFFER_0;
+	static uint32_t addr;
+	if (addr == FRAME_BUFFER_0) {
+		addr = FRAME_BUFFER_1;
+	}
+	else if (addr == FRAME_BUFFER_1){
+		addr = FRAME_BUFFER_2;
+	}
+	else {
+		addr = FRAME_BUFFER_0;
+	}
+	return addr;
+	//return (addr == FRAME_BUFFER_0) ? FRAME_BUFFER_1 : FRAME_BUFFER_0;
 }
 
 int xCartToScreen(int x, unsigned short screenWidth) {
@@ -195,6 +205,7 @@ void drawCircle(int x0,	int y0,	int radius,	unsigned short hTime, unsigned short
 		pCurr = coordToPixel(xCurr, yCurr, hTime);
 		Xil_Out32((frameAddr+((pCurr)*4)), (circleColor & 0xffffff));
 		y++;
+		Xil_DCacheFlush();
 
 		if (decisionOver2 <= 0) {
 			decisionOver2 += 2 * y + 1;
@@ -209,10 +220,15 @@ void drawCircle(int x0,	int y0,	int radius,	unsigned short hTime, unsigned short
 void fillBackground(unsigned long frameAddr) {
 	int line = 0;
 	int pixel = 0;
+	//static uint32_t pixels[vTime][hTime];
 
 	while (line < vTime) {
 		while((pixel - line*hTime) < hTime) {
-			Xil_Out32((VIDEO_BASEADDR+(pixel*4)), (0x000000 & 0xffffff));
+			//pixels[line][pixel] = ;
+			Xil_Out32((frameAddr+(pixel*4)), (0x000000 & 0xffffff));
+			//Xil_Out32((FRAME_BUFFER_0+(pixel*4)), (0x000000 & 0xffffff));
+			//Xil_Out32((FRAME_BUFFER_1+(pixel*4)), (0x000000 & 0xffffff));
+			//Xil_Out32((FRAME_BUFFER_2+(pixel*4)), (0x000000 & 0xffffff));
 			pixel++;
 		}
 		line++;
@@ -222,22 +238,24 @@ void fillBackground(unsigned long frameAddr) {
 		pixel = line*hTime;
 	}
 }
+
+static int count = 0;
 void renderFrame() {
 	xil_printf("Render frame\n");
 	uint32_t frameAddr;
 	static uint32_t color = 0x0000ff;
+
 	//Select the current frame to render
-
 	frameAddr = frameBufferSelect();
-	(color == 0x0000ff) ? 0x00ff00 : 0xff0000;
-
 	fillBackground(frameAddr);
-	drawCircle(0, 0, hTime/5, hTime, vTime, color, frameAddr);
-
+	drawCircle(count, count, hTime/5, hTime, vTime, color, frameAddr);
+	count++;
 	//Start VDMA with the desired starting address
-	if (frameAddr == FRAME_BUFFER_0) {
+	if (frameAddr == FRAME_BUFFER_1 || frameAddr == FRAME_BUFFER_2) {
+
 		Xil_Out32((VDMA_BASEADDR + AXI_VDMA_PARK_PTR_REG), 0);
 	} else {
+
 		Xil_Out32((VDMA_BASEADDR + AXI_VDMA_PARK_PTR_REG), 1);
 	}
 	Xil_DCacheFlush();
